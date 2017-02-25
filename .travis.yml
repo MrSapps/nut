@@ -1,0 +1,11 @@
+language: cpp
+sudo: false
+
+before_script:
+  - mkdir build
+  - cd build
+  - cmake ..
+
+script:
+  - make -j 2
+  - ctest -V -j 2
