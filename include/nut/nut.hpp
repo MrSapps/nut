@@ -24,6 +24,83 @@ namespace nut
         int mTop;
     };
 
+    class stack
+    {
+    public:
+        stack(HSQUIRRELVM hVm)
+            : mVm(hVm)
+        {
+
+        }
+
+        void set_top(SQInteger top)
+        {
+            sq_settop(mVm, top);
+        }
+
+        SQInteger top()
+        {
+            return sq_gettop(mVm);
+        }
+
+        void pop_elements(SQInteger numElements = 1)
+        {
+            sq_pop(mVm, numElements);
+        }
+
+        void push(const SQChar *s, SQInteger len)
+        {
+            sq_pushstring(mVm, s, len);
+        }
+
+        void push(const SQFloat f)
+        {
+            sq_pushfloat(mVm, f);
+        }
+
+        void push(const SQInteger n)
+        {
+            sq_pushinteger(mVm, n);
+        }
+
+        void push(const SQUserPointer p)
+        {
+            sq_pushuserpointer(mVm, p);
+        }
+
+        void push(const SQBool b)
+        {
+            sq_pushbool(mVm, b);
+        }
+
+        void push()
+        {
+            sq_pushnull(mVm);
+        }
+
+        SQObjectType type(SQInteger idx)
+        {
+            return sq_gettype(mVm, idx);
+        }
+
+        const SQChar* get_string(SQInteger idx)
+        {
+            assert(verify_type(idx, OT_STRING));
+
+            const SQChar* c = nullptr;
+            sq_getstring(mVm, idx, &c);
+            return c;
+        }
+        
+        bool verify_type(SQInteger idx, SQObjectType expected)
+        {
+            return type(idx) == expected;
+        }
+
+    private:
+        HSQUIRRELVM mVm;
+    };
+
     class vm
     {
     public:
@@ -47,12 +124,15 @@ namespace nut
         template<class FunctionType>
         void set_function(const char* functionName, FunctionType func)
         {
+            stack s(mVmHandle);
+            s.push(functionName, strlen(functionName));
 
         }
 
         void script(const char* script)
         {
             stack_saver ss(mVmHandle);
+
         }
 
     private:
