@@ -9,6 +9,7 @@ void function_with_no_arguments_and_no_return_value()
     function_with_no_arguments_and_no_return_value_called = true;
 }
 
+
 TEST_CASE("stack", "push_get")
 {
     nut::vm vm;
@@ -24,9 +25,13 @@ TEST_CASE("functions", "check calling function with no arguments and no return v
 {
     nut::vm vm;
 
+    vm.script("print(\"test\");");
+
     vm.set_function("function_with_no_arguments_and_no_return_value", function_with_no_arguments_and_no_return_value);
 
-    //REQUIRE(function_with_no_arguments_and_no_return_value_called == false);
-    vm.script("function_with_no_arguments_and_no_return_value()");
-    //REQUIRE(function_with_no_arguments_and_no_return_value_called == true);
+    size_t count = nut::getArgumentCount(function_with_no_arguments_and_no_return_value).value;
+
+    REQUIRE(function_with_no_arguments_and_no_return_value_called == false);
+    vm.script("function_with_no_arguments_and_no_return_value();");
+    REQUIRE(function_with_no_arguments_and_no_return_value_called == true);
 }
