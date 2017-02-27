@@ -37,10 +37,19 @@ TEST_CASE("stack", "push_read")
 
     // Multi read
     float v1;
-    const SQChar* v2;
+    std::string v2;
     float v3;
     float v4;
-    std::tie(v1, v2, v3, v4) = s.pop<float, const SQChar*, float, float>();
+    std::tie(v1, v2, v3, v4) = s.pop<float, std::string, float, float>(); // Can't return pointer to string because popping the stack will destroy the string
+
+    REQUIRE(v1 == 1.0f);
+    REQUIRE(strcmp("hello", v2.c_str()) == 0);
+    REQUIRE(v3 == 2.0f);
+    REQUIRE(v4 == 3.0f);
+
+    float f = s.pop<float>();
+    REQUIRE(1998.1f == f);
+
 }
 
 TEST_CASE("functions", "check calling function with no arguments and no return value") 

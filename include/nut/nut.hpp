@@ -78,6 +78,16 @@ namespace nut
             return f;
         }
 
+        template<>
+        std::string Read(SQInteger idx) const
+        {
+            assert(verify_type(idx, OT_STRING));
+
+            const SQChar* c = nullptr;
+            sq_getstring(mVm, idx, &c);
+            return c;
+        }
+
         void push(const SQChar *s)
         {
             sq_pushstring(mVm, s, -1);
@@ -103,7 +113,6 @@ namespace nut
             sq_pushbool(mVm, b);
         }
 
-        
         void push()
         {
             sq_pushnull(mVm);
@@ -128,28 +137,27 @@ namespace nut
 
         // General type trait struct
         template <typename... Ts>
-        struct _pop 
+        struct pop_trait 
         {
-            typedef std::tuple<Ts...> type;
-
             // base case: creates a tuple containing one element
             template <typename T>
-            static std::tuple<T> worker(const stack &s, const int index)
+            static auto worker(const stack& s, const int index)
             {
                 return std::make_tuple(s.Read<T>(index));
             }
 
             // inductive case
-            template <typename T1, typename T2, typename... Rest>
-            static std::tuple<T1, T2, Rest...> worker(const stack &s, const int index)
+            template <typename ArgsFirstItem, typename ArgsSecondItem, typename... ArgsRemaining>
+            static auto worker(const stack& s, const int index)
             {
-                std::tuple<T1> head = std::make_tuple(s.Read<T1>(index));
-                return std::tuple_cat(head, worker<T2, Rest...>(s, index + 1));
+                auto head = std::make_tuple(s.Read<ArgsFirstItem>(index));
+                return std::tuple_cat(head, worker<ArgsSecondItem, ArgsRemaining...>(s, index + 1));
             }
 
-            static type apply(stack& s, int argIdx)
+            static auto apply(stack& s)
             {
-                auto ret = worker<Ts...>(s, 1);
+                const auto top = s.top();
+                auto ret = worker<Ts...>(s, -static_cast<int>(sizeof...(Ts)));
                 s.pop_elements(sizeof...(Ts));
                 return ret;
             }
@@ -158,19 +166,20 @@ namespace nut
 
         // Specialization for singular type
         template <typename T>
-        struct _pop<T> 
+        struct pop_trait<T> 
         {
-            typedef T type;
-            static type apply(stack &s, int argIdx)
+            static auto apply(stack &s)
             {
-                // todo
+                auto ret = s.Read<T>(-1);
+                s.pop_elements(1);
+                return ret;
             }
         };
 
         template <typename... T>
         auto pop()
         {
-            return _pop<T...>::apply(*this, sizeof...(T));
+            return pop_trait<T...>::apply(*this);
         }
 
     private:
