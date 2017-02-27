@@ -55,9 +55,32 @@ namespace nut
             sq_pop(mVm, numElements);
         }
 
-        void push(const SQChar *s, SQInteger len)
+        template<class T>
+        T Read(SQInteger index) const;
+
+        template<>
+        const SQChar* Read(SQInteger idx) const
         {
-            sq_pushstring(mVm, s, len);
+            assert(verify_type(idx, OT_STRING));
+
+            const SQChar* c = nullptr;
+            sq_getstring(mVm, idx, &c);
+            return c;
+        }
+
+        template<>
+        float Read(SQInteger idx) const
+        {
+            assert(verify_type(idx, OT_FLOAT));
+
+            float f = 0.0f;
+            sq_getfloat(mVm, idx, &f);
+            return f;
+        }
+
+        void push(const SQChar *s)
+        {
+            sq_pushstring(mVm, s, -1);
         }
 
         void push(const SQFloat f)
@@ -80,28 +103,74 @@ namespace nut
             sq_pushbool(mVm, b);
         }
 
+        
         void push()
         {
             sq_pushnull(mVm);
         }
 
-        SQObjectType type(SQInteger idx)
+        template <typename T, typename... Ts>
+        void push(const T value, const Ts... values) 
+        {
+            push(value);
+            push(values...);
+        }
+
+        SQObjectType type(SQInteger idx) const
         {
             return sq_gettype(mVm, idx);
         }
 
-        const SQChar* get_string(SQInteger idx)
-        {
-            assert(verify_type(idx, OT_STRING));
-
-            const SQChar* c = nullptr;
-            sq_getstring(mVm, idx, &c);
-            return c;
-        }
-        
-        bool verify_type(SQInteger idx, SQObjectType expected)
+        bool verify_type(SQInteger idx, SQObjectType expected) const
         {
             return type(idx) == expected;
+        }
+
+        // General type trait struct
+        template <typename... Ts>
+        struct _pop 
+        {
+            typedef std::tuple<Ts...> type;
+
+            // base case: creates a tuple containing one element
+            template <typename T>
+            static std::tuple<T> worker(const stack &s, const int index)
+            {
+                return std::make_tuple(s.Read<T>(index));
+            }
+
+            // inductive case
+            template <typename T1, typename T2, typename... Rest>
+            static std::tuple<T1, T2, Rest...> worker(const stack &s, const int index)
+            {
+                std::tuple<T1> head = std::make_tuple(s.Read<T1>(index));
+                return std::tuple_cat(head, worker<T2, Rest...>(s, index + 1));
+            }
+
+            static type apply(stack& s, int argIdx)
+            {
+                auto ret = worker<Ts...>(s, 1);
+                s.pop_elements(sizeof...(Ts));
+                return ret;
+            }
+        };
+
+
+        // Specialization for singular type
+        template <typename T>
+        struct _pop<T> 
+        {
+            typedef T type;
+            static type apply(stack &s, int argIdx)
+            {
+                // todo
+            }
+        };
+
+        template <typename... T>
+        auto pop()
+        {
+            return _pop<T...>::apply(*this, sizeof...(T));
         }
 
     private:
